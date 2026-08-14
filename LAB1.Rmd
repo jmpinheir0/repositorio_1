@@ -1,0 +1,140 @@
+---
+title: "Laboratório 1 - ME315"
+author: "Julia M. P. Pinheiro"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+1) Carregue o pacote tidyverse
+```{r, echo=TRUE, eval=TRUE, message=FALSE}
+#Carregar pacote tidyverse
+library(tidyverse)
+```
+
+2) Apresente os bancos de dados `table1`, `table2`, `table3`, `table4a` e `table4b`, distribuídos juntamente com o pacote tidyverse. Para cada banco de dados, descreva textualmente se ele está no formato tidy e justifique cada uma de suas respostas.
+
+```{r}
+#Leitura das tabelas
+table1
+table2
+table3
+table4a
+table4b
+```
+ Por definição, temos que uma tabela está no formato Tidy se representada com: uma única observação por linha, um único nome de variável por coluna e cada célula apresenta um único valor. Dessa forma, podemos verificar que apenas a  `table1` está neste formato.
+ As tabelas `table2`, `table3` `table4a` e `table4b` não estão no formato Tidy, pois a `table2` apresenta, na coluna "type", duas variáveis ("cases" e "population") em vez de duas colunas diferentes; a `table3`, por não apresentar na coluna "rate" um único valor por célula; e as tabelas `table4a ` e `table4b` por apresentar colunas com os valores da variável "year" .
+ 
+3) Utilizando comandos do pacote `dplyr`, determine a taxa de ocorrência de tuberculose para cada 10.000 pessoas. Armazene o resultado em um objeto chamado taxas.
+
+```{r}
+library(dplyr)
+tabela <- table1 
+tabela <- tabela %>%  mutate(taxa = (cases / population) * 10000)
+```
+
+4) Apresente, utilizando comandos do pacote dplyr, o número de casos de tuberculose por ano.
+```{r}
+casos_ano <- tabela %>% group_by(year) %>% summarise(casos=sum(cases))
+casos_ano
+```
+
+5) Apresente, utilizando comandos do pacote dplyr, o número de casos de tuberculose identificados em cada país.
+
+```{r}
+casos_pais <- tabela %>% group_by(country) %>% summarise(casos = sum(cases))
+casos_pais
+```
+
+ 
+6) Utilizando comandos do pacote dplyr, apresente uma tabela que descreva a mudança no número de casos, em cada país, ao longo dos anos de 1999 e 2000.
+
+```{r}
+variacao_pais <- tabela %>% group_by(country) %>% 
+  summarise(variacao = abs(cases[year==2000]-cases[year==1999]))
+variacao_pais
+```
+
+7) Apresente um gráfico de linhas, preparado via ggplot2, apresentando a mudança na taxa de casos (por 10.000 habitantes) estratificado por país.
+
+```{r}
+library(ggplot2)
+tabela %>% 
+  ggplot(aes(x = factor(year), y = taxa, group = country, color = country)) +
+  geom_line() +
+  labs(
+    title = "Evolução da Taxa de Casos de Tuberculose",
+    x = "Ano",
+    y = "Taxa (por 10.000 hab.)",
+    color = "País")
+```
+
+8) Calcule a taxa para as tabelas `table2` e `table4a+table4b`
+```{r}
+tabela_2 <- table2 %>% pivot_wider(names_from = type, values_from = count) %>% 
+  mutate(taxa = (cases / population) * 10000)
+tabela_2
+
+tabela_4a <- table4a %>% 
+  pivot_longer(cols = c(`1999`, `2000`), names_to = "year", values_to = "cases")
+
+tabela_4b <- table4b %>% 
+  pivot_longer(cols = c(`1999`, `2000`), 
+               names_to = "year", values_to = "population")
+
+tabela_4 <- tabela_4a %>%
+  mutate(taxa = (tabela_4a$cases / tabela_4b$population) * 10000, 
+                                 pupulation = tabela_4b$population)
+tabela_4
+```
+
+9) Refaça o gráfico da questão 7 para os dados apresentados em table2.
+```{r}
+tabela_2 %>% 
+  ggplot(aes(x = factor(year), y = taxa, group = country, color = country)) +
+  geom_line() +
+  labs(
+    title = "Evolução da Taxa de Casos de Tuberculose",
+    x = "Ano",
+    y = "Taxa (por 10.000 hab.)",
+    color = "País")
+```
+
+10) Utilizando o comando pivot_longer, transforme table4a em um objeto no formato tidy. Armazene o resultado num objeto chamado tidy4a.
+```{r}
+tidy4a <- table4a %>% 
+  pivot_longer(cols = c(`1999`, `2000`), names_to = "year", values_to = "cases")
+tidy4a
+```
+11) Refaça o item 10 para o objeto table4b. Armazene o resultado num objeto chamado tidy4b.
+```{r}
+tidy4b<- table4b %>% 
+  pivot_longer(cols = c(`1999`, `2000`), names_to = "year", values_to = "population")
+tidy4b
+```
+12) Combine os objetos tidy4a e tidy4b em um único objeto, utilizando o comando left_join. Apresente uma explicação textual sobre o que faz o referido comando.
+```{r}
+ tidy4 <- tidy4a %>% left_join(tidy4b, by = c("country", "year"))
+tidy4
+```
+A função `left_join` realiza a junção de duas tabelas preservando todas as linhas da tabela da esquerda (tidy4a) e acrescentando as colunas da tabela da direita (tidy4b). Essa junção de dados ocorre a partir da correspondência de variáveis entre as tabelas, que neste caso são "country" e "year".
+
+13)Use o comando pivot_wider para tranformar o objeto table2 em um objeto com formato tidy.
+```{r}
+tidy2 <- table2 %>% pivot_wider(names_from = type, values_from = count)
+tidy2
+```
+14) Observe que a coluna rate do objeto table3 é um texto mostrando a fração que formaria a taxa de casos de tuberculose. Transforme o objeto table3 em um objeto com formato tidy separando a coluna 3 em duas outras colunas: cases e population, utilizando o comando separate. Utilize o argumento convert para transformar o resultado em um objeto numérico.
+```{r}
+tabela_3 <- table3 %>% 
+  separate(
+    col = rate, 
+    into = c("cases", "population"), 
+    sep = "/", 
+    convert = TRUE
+  )
+tabela_3
+```
+
